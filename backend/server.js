@@ -1,6 +1,5 @@
 const express = require("express");
 const cors = require("cors");
-// Replace full AWS SDK with specific modules
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const {
   DynamoDBDocumentClient,
@@ -18,7 +17,7 @@ app.use(express.json());
 
 // Configure AWS
 const client = new DynamoDBClient({
-  region: process.env.AWS_REGION,
+  region: process.env.AWS_DEFAULT_REGION,
   credentials: {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
@@ -34,7 +33,31 @@ app.get("/api/health", (req, res) => {
   res.status(200).json({ status: "Server is running" });
 });
 
+// Add endpoint to get recent workorders
+app.get("/api/recent-workorders", async (req, res) => {
+  try {
+    const params = {
+      TableName: tableName,
+      IndexName: "index_work_order_number",
+      Limit: 5,
+      ScanIndexForward: false, // This will sort in descending order
+      ProjectionExpression: "work_order_number",
+    };
+
+    const result = await dynamoDB.send(new QueryCommand(params));
+    const workorders = [
+      ...new Set(result.Items.map((item) => item.work_order_number)),
+    ]; // Remove duplicates
+
+    res.status(200).json(workorders.slice(0, 5)); // Ensure we only send 5 items
+  } catch (error) {
+    console.error("Error fetching recent workorders:", error);
+    res.status(500).json({ error: "Failed to fetch recent workorders" });
+  }
+});
+
 app.post("/api/submit", async (req, res) => {
+  console.log(req.body);
   try {
     const {
       work_order_number,
@@ -147,7 +170,7 @@ const create_damage_record = async (damage_record) => {
       },
       entity_type: "damage",
       site_id: damage_record.site_id,
-      source: "ECRVCF",
+      source: "ECR_VCF",
       sblu: damage_record.sblu,
       updated: Math.floor(new Date().getTime() / 1000),
       updated_by: "faker",

@@ -18,13 +18,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "4000:4000"
-    environment:
-      - PORT=4000
-      - AWS_REGION=${AWS_REGION}
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
-      - DYNAMODB_TABLE="rpp-recon-work-order"
+    env_file:
+      - ./backend/.env
     networks:
       - app-network
 

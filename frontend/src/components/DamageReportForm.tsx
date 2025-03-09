@@ -26,7 +26,7 @@ import {
 import Loading from "@/app/Loading";
 
 const formSchema = z.object({
-  workorder_number: z
+  work_order_number: z
     .string()
     .min(1, { message: "Please enter a workorder number" })
     .regex(/^\d+$/, { message: "Workorder number must contain only digits" }),
@@ -40,6 +40,7 @@ const formSchema = z.object({
   severity_code: z.string(),
   action: z.string().min(1, { message: "Please select an action" }),
   action_code: z.string(),
+  site_id: z.string().min(1, { message: "Please select a site" }),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -94,10 +95,41 @@ export function DamageReportForm() {
     type: "success" | "error";
   } | null>(null);
 
+  // Helper function to safely interact with localStorage
+  const getLocalStorage = () => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("recentWorkorders");
+      return saved ? JSON.parse(saved) : [];
+    }
+    return [];
+  };
+
+  const setLocalStorage = (workorders: string[]) => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("recentWorkorders", JSON.stringify(workorders));
+    }
+  };
+
+  // Add state for recent workorders
+  const [recentWorkorders, setRecentWorkorders] = useState<string[]>(() => {
+    return getLocalStorage();
+  });
+  const [showRecentWorkorders, setShowRecentWorkorders] = useState(false);
+
+  // Function to add a new workorder to recent list
+  const addToRecentWorkorders = (workorderNumber: string) => {
+    const updated = [
+      workorderNumber,
+      ...recentWorkorders.filter((wo) => wo !== workorderNumber),
+    ].slice(0, 5);
+    setRecentWorkorders(updated);
+    setLocalStorage(updated);
+  };
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      workorder_number: "",
+      work_order_number: "",
       item: "",
       item_code: "",
       subitem: "",
@@ -108,6 +140,7 @@ export function DamageReportForm() {
       severity_code: "",
       action: "",
       action_code: "",
+      site_id: "",
     },
   });
 
@@ -118,14 +151,36 @@ export function DamageReportForm() {
     console.log("Submitting with item code:", data.item_code);
 
     try {
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/submit`, data);
+      const response = await axios.post("/api/submit", data);
 
-      setMessage({
-        text: "Damage report submitted successfully!",
-        type: "success",
-      });
+      if (response.status === 201 || response.status === 200) {
+        // Add to recent workorders after successful submission
+        addToRecentWorkorders(data.work_order_number);
 
-      form.reset();
+        setMessage({
+          text: "Damage report submitted successfully!",
+          type: "success",
+        });
+
+        // Reset form with default values
+        const defaultValues = {
+          work_order_number: "",
+          item: "",
+          item_code: "",
+          subitem: "",
+          subitem_code: "",
+          damage: "",
+          damage_code: "",
+          severity: "",
+          severity_code: "",
+          action: "",
+          action_code: "",
+          site_id: "",
+        };
+
+        // Reset the form state completely
+        form.reset(defaultValues);
+      }
     } catch (error) {
       console.error("Submission error:", error);
 
@@ -173,200 +228,256 @@ export function DamageReportForm() {
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit)}
-          className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full"
+          className="grid grid-cols-1 w-full"
         >
-          <FormField
-            control={form.control}
-            name="workorder_number"
-            render={({ field }) => (
-              <FormItem className="w-full">
-                <FormLabel>Workorder Number</FormLabel>
-                <FormControl>
-                  <Input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    placeholder="Enter workorder number"
-                    {...field}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/\D/g, "");
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+            <FormField
+              control={form.control}
+              name="work_order_number"
+              render={({ field }) => (
+                <FormItem className="w-full relative">
+                  <FormLabel>Workorder Number</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        placeholder="Enter workorder number"
+                        {...field}
+                        onFocus={() => {
+                          setShowRecentWorkorders(true);
+                        }}
+                        onBlur={() => {
+                          // Delay hiding to allow clicking on the dropdown
+                          setTimeout(() => setShowRecentWorkorders(false), 200);
+                        }}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, "");
+                          field.onChange(value);
+                        }}
+                      />
+                      {showRecentWorkorders && recentWorkorders.length > 0 && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg">
+                          <div className="py-1">
+                            <div className="px-3 py-2 text-xs text-gray-500 border-b">
+                              Recent Workorders
+                            </div>
+                            {recentWorkorders.map((workorder) => (
+                              <div
+                                key={workorder}
+                                className="px-3 py-2 text-sm hover:bg-gray-100 cursor-pointer"
+                                onClick={() => {
+                                  field.onChange(workorder);
+                                  setShowRecentWorkorders(false);
+                                }}
+                              >
+                                {workorder}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="site_id"
+              render={({ field }) => (
+                <FormItem className="w-full">
+                  <FormLabel>Site ID</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl className="w-full">
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select a site" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="PLM1">PLM1</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="item"
+              render={({ field }) => (
+                <FormItem className="w-full">
+                  <FormLabel>Item</FormLabel>
+                  <Select
+                    onValueChange={(value) => {
                       field.onChange(value);
+                      form.setValue("item_code", itemCodes[value] || "");
                     }}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+                    value={field.value}
+                  >
+                    <FormControl className="w-full">
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select an item" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="Air Suspension">
+                        Air Suspension
+                      </SelectItem>
+                      <SelectItem value="Engine">Engine</SelectItem>
+                      <SelectItem value="LF Strut">LF Strut</SelectItem>
+                      <SelectItem value="Air Conditioner">
+                        Air Conditioner
+                      </SelectItem>
+                      <SelectItem value="RF Tire">RF Tire</SelectItem>
+                      <SelectItem value="LF Tire">LF Tire</SelectItem>
+                      <SelectItem value="Air Filter">Air Filter</SelectItem>
+                      <SelectItem value="Oil Filter">Oil Filter</SelectItem>
+                      <SelectItem value="Oil">Oil</SelectItem>
+                      <SelectItem value="Transmission Filter">
+                        Transmission Filter
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            control={form.control}
-            name="item"
-            render={({ field }) => (
-              <FormItem className="w-full">
-                <FormLabel>Item</FormLabel>
-                <Select
-                  onValueChange={(value) => {
-                    field.onChange(value);
-                    form.setValue("item_code", itemCodes[value] || "");
-                  }}
-                  defaultValue={field.value}
-                >
-                  <FormControl className="w-full">
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select an item" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="Air Suspension">
-                      Air Suspension
-                    </SelectItem>
-                    <SelectItem value="Engine">Engine</SelectItem>
-                    <SelectItem value="LF Strut">LF Strut</SelectItem>
-                    <SelectItem value="Air Conditioner">
-                      Air Conditioner
-                    </SelectItem>
-                    <SelectItem value="RF Tire">RF Tire</SelectItem>
-                    <SelectItem value="LF Tire">LF Tire</SelectItem>
-                    <SelectItem value="Air Filter">Air Filter</SelectItem>
-                    <SelectItem value="Oil Filter">Oil Filter</SelectItem>
-                    <SelectItem value="Oil">Oil</SelectItem>
-                    <SelectItem value="Transmission Filter">
-                      Transmission Filter
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+            <FormField
+              control={form.control}
+              name="subitem"
+              render={({ field }) => (
+                <FormItem className="w-full">
+                  <FormLabel>Subitem</FormLabel>
+                  <Select
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      form.setValue("subitem_code", subitemCodes[value] || "");
+                    }}
+                    value={field.value}
+                  >
+                    <FormControl className="w-full">
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select a subitem" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="01">01</SelectItem>
+                      <SelectItem value="02">02</SelectItem>
+                      <SelectItem value="03">03</SelectItem>
+                      <SelectItem value="04">04</SelectItem>
+                      <SelectItem value="05">05</SelectItem>
+                      <SelectItem value="06">06</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            control={form.control}
-            name="subitem"
-            render={({ field }) => (
-              <FormItem className="w-full">
-                <FormLabel>Subitem</FormLabel>
-                <Select
-                  onValueChange={(value) => {
-                    field.onChange(value);
-                    form.setValue("subitem_code", subitemCodes[value] || "");
-                  }}
-                  defaultValue={field.value}
-                >
-                  <FormControl className="w-full">
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a subitem" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="01">01</SelectItem>
-                    <SelectItem value="02">02</SelectItem>
-                    <SelectItem value="03">03</SelectItem>
-                    <SelectItem value="04">04</SelectItem>
-                    <SelectItem value="05">05</SelectItem>
-                    <SelectItem value="06">06</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+            <FormField
+              control={form.control}
+              name="damage"
+              render={({ field }) => (
+                <FormItem className="w-full">
+                  <FormLabel>Damage Type</FormLabel>
+                  <Select
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      form.setValue("damage_code", damageCodes[value] || "");
+                    }}
+                    value={field.value}
+                  >
+                    <FormControl className="w-full">
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select damage type" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="Broken">Broken</SelectItem>
+                      <SelectItem value="Missing">Missing</SelectItem>
+                      <SelectItem value="Bent">Bent</SelectItem>
+                      <SelectItem value="Cracked">Cracked</SelectItem>
+                      <SelectItem value="Leak">Leak</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            control={form.control}
-            name="damage"
-            render={({ field }) => (
-              <FormItem className="w-full">
-                <FormLabel>Damage Type</FormLabel>
-                <Select
-                  onValueChange={(value) => {
-                    field.onChange(value);
-                    form.setValue("damage_code", damageCodes[value] || "");
-                  }}
-                  defaultValue={field.value}
-                >
-                  <FormControl className="w-full">
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select damage type" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="Broken">Broken</SelectItem>
-                    <SelectItem value="Missing">Missing</SelectItem>
-                    <SelectItem value="Bent">Bent</SelectItem>
-                    <SelectItem value="Cracked">Cracked</SelectItem>
-                    <SelectItem value="Leak">Leak</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+            <FormField
+              control={form.control}
+              name="severity"
+              render={({ field }) => (
+                <FormItem className="w-full">
+                  <FormLabel>Severity</FormLabel>
+                  <Select
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      form.setValue(
+                        "severity_code",
+                        severityCodes[value] || ""
+                      );
+                    }}
+                    value={field.value}
+                  >
+                    <FormControl className="w-full">
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select severity level" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="Replacement Required">
+                        Replacement Required
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            control={form.control}
-            name="severity"
-            render={({ field }) => (
-              <FormItem className="w-full">
-                <FormLabel>Severity</FormLabel>
-                <Select
-                  onValueChange={(value) => {
-                    field.onChange(value);
-                    form.setValue("severity_code", severityCodes[value] || "");
-                  }}
-                  defaultValue={field.value}
-                >
-                  <FormControl className="w-full">
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select severity level" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="Replacement Required">
-                      Replacement Required
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+            <FormField
+              control={form.control}
+              name="action"
+              render={({ field }) => (
+                <FormItem className="w-full">
+                  <FormLabel>Recommended Action</FormLabel>
+                  <Select
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      form.setValue("action_code", actionCodes[value] || "");
+                    }}
+                    value={field.value}
+                  >
+                    <FormControl className="w-full">
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select recommended action" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="Repair">Repair</SelectItem>
+                      <SelectItem value="Replace">Replace</SelectItem>
+                      <SelectItem value="Refinish">Refinish</SelectItem>
+                      <SelectItem value="Inspect">Inspect</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
 
-          <FormField
-            control={form.control}
-            name="action"
-            render={({ field }) => (
-              <FormItem className="w-full">
-                <FormLabel>Recommended Action</FormLabel>
-                <Select
-                  onValueChange={(value) => {
-                    field.onChange(value);
-                    form.setValue("action_code", actionCodes[value] || "");
-                  }}
-                  defaultValue={field.value}
-                >
-                  <FormControl className="w-full">
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select recommended action" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="Repair">Repair</SelectItem>
-                    <SelectItem value="Replace">Replace</SelectItem>
-                    <SelectItem value="Refinish">Refinish</SelectItem>
-                    <SelectItem value="Inspect">Inspect</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <div className="md:col-start-2 md:col-span-1">
+          <div className="w-1/2 justify-self-end mt-4">
             <Button
               type="submit"
-              className="w-full relative overflow-hidden bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 transition-colors duration-300 ease-in-out transform hover:scale-[1.02]"
+              className="w-full relative overflow-hidden bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 transition-colors duration-300 ease-in-out transform hover:scale-[1.02] cursor-pointer"
               disabled={isSubmitting}
             >
               {isSubmitting ? <Loading /> : "Submit Report"}
