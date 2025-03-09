@@ -33,7 +33,7 @@ const formSchema = z.object({
   item: z.string().min(1, { message: "Please select an item" }),
   item_code: z.string(),
   subitem: z.string().min(1, { message: "Please select a subitem" }),
-  subitem_code: z.string(),
+  sub_item_code: z.string(),
   damage: z.string().min(1, { message: "Please select a damage type" }),
   damage_code: z.string(),
   severity: z.string().min(1, { message: "Please select a severity level" }),
@@ -85,8 +85,8 @@ export function DamageReportForm() {
   const actionCodes: Record<string, string> = {
     Repair: "RE",
     Replace: "RP",
-    Refinish: "RF",
-    Inspect: "IN",
+    "In-Body": "IB",
+    "Part Needed": "PN",
   };
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -133,7 +133,7 @@ export function DamageReportForm() {
       item: "",
       item_code: "",
       subitem: "",
-      subitem_code: "",
+      sub_item_code: "",
       damage: "",
       damage_code: "",
       severity: "",
@@ -168,7 +168,7 @@ export function DamageReportForm() {
           item: "",
           item_code: "",
           subitem: "",
-          subitem_code: "",
+          sub_item_code: "",
           damage: "",
           damage_code: "",
           severity: "",
@@ -357,7 +357,7 @@ export function DamageReportForm() {
                   <Select
                     onValueChange={(value) => {
                       field.onChange(value);
-                      form.setValue("subitem_code", subitemCodes[value] || "");
+                      form.setValue("sub_item_code", subitemCodes[value] || "");
                     }}
                     value={field.value}
                   >
@@ -464,8 +464,8 @@ export function DamageReportForm() {
                     <SelectContent>
                       <SelectItem value="Repair">Repair</SelectItem>
                       <SelectItem value="Replace">Replace</SelectItem>
-                      <SelectItem value="Refinish">Refinish</SelectItem>
-                      <SelectItem value="Inspect">Inspect</SelectItem>
+                      <SelectItem value="In-Body">In-Body</SelectItem>
+                      <SelectItem value="Part Needed">Part Needed</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

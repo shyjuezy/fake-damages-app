@@ -33,29 +33,6 @@ app.get("/api/health", (req, res) => {
   res.status(200).json({ status: "Server is running" });
 });
 
-// Add endpoint to get recent workorders
-app.get("/api/recent-workorders", async (req, res) => {
-  try {
-    const params = {
-      TableName: tableName,
-      IndexName: "index_work_order_number",
-      Limit: 5,
-      ScanIndexForward: false, // This will sort in descending order
-      ProjectionExpression: "work_order_number",
-    };
-
-    const result = await dynamoDB.send(new QueryCommand(params));
-    const workorders = [
-      ...new Set(result.Items.map((item) => item.work_order_number)),
-    ]; // Remove duplicates
-
-    res.status(200).json(workorders.slice(0, 5)); // Ensure we only send 5 items
-  } catch (error) {
-    console.error("Error fetching recent workorders:", error);
-    res.status(500).json({ error: "Failed to fetch recent workorders" });
-  }
-});
-
 app.post("/api/submit", async (req, res) => {
   console.log(req.body);
   try {
@@ -64,7 +41,7 @@ app.post("/api/submit", async (req, res) => {
       item,
       item_code,
       subitem,
-      subitem_code,
+      sub_item_code,
       damage,
       damage_code,
       severity,
@@ -80,7 +57,7 @@ app.post("/api/submit", async (req, res) => {
       !item ||
       !item_code ||
       !subitem ||
-      !subitem_code ||
+      !sub_item_code ||
       !damage ||
       !damage_code ||
       !severity ||
@@ -97,7 +74,7 @@ app.post("/api/submit", async (req, res) => {
       item,
       item_code,
       subitem,
-      subitem_code,
+      sub_item_code,
       damage,
       damage_code,
       severity,
@@ -145,11 +122,11 @@ const create_damage_record = async (damage_record) => {
   try {
     record = {
       pk: `workorder:${damage_record.sblu}#${damage_record.site_id}`,
-      sk: `damage:${damage_record.item_code}#${damage_record.subitem_code}#${damage_record.damage_code}#${damage_record.severity_code}#${damage_record.action_code}`,
+      sk: `damage:${damage_record.item_code}#${damage_record.sub_item_code}#${damage_record.damage_code}#${damage_record.severity_code}#${damage_record.action_code}`,
       item: damage_record.item,
       item_code: damage_record.item_code,
       subitem: damage_record.subitem,
-      subitem_code: damage_record.subitem_code,
+      sub_item_code: damage_record.sub_item_code,
       damage: damage_record.damage,
       damage_code: damage_record.damage_code,
       severity: damage_record.severity,
@@ -172,11 +149,13 @@ const create_damage_record = async (damage_record) => {
       site_id: damage_record.site_id,
       source: "ECR_VCF",
       sblu: damage_record.sblu,
-      updated: Math.floor(new Date().getTime() / 1000),
+      updated: new Date().getTime() / 1000,
       updated_by: "faker",
       vin: "12345678901234567",
       work_order_number: damage_record.work_order_number,
     };
+
+    console.log(`dynamdb_record: ${JSON.stringify(record)}`);
 
     const params = {
       TableName: tableName,
