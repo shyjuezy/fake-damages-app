@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import Loading from "@/app/Loading";
 
 const formSchema = z.object({
   workorder_number: z
@@ -46,48 +47,45 @@ type FormValues = z.infer<typeof formSchema>;
 export function DamageReportForm() {
   // Item to code mapping with proper typing
   const itemCodes: Record<string, string> = {
-    "Air Suspension": "AS001",
-    Engine: "ENG001",
-    "LF Strut": "STR001",
-    "Air Conditioner": "AC001",
-    "RF Tire": "TRF001",
-    "LF Tire": "TLF001",
-    "Air Filter": "FLT001",
-    "Oil Filter": "FLT002",
-    Oil: "OIL001",
-    "Transmission Filter": "FLT003",
+    "Air Suspension": "0520",
+    Engine: "0530",
+    "LF Strut": "0620",
+    "Air Conditioner": "0630",
+    "RF Tire": "0640",
+    "LF Tire": "0650",
+    "Air Filter": "0660",
+    "Oil Filter": "0670",
+    Oil: "0680",
+    "Transmission Filter": "0690",
   };
 
   const subitemCodes: Record<string, string> = {
-    Chair: "CH001",
-    Table: "TB001",
-    Computer: "CP001",
-    Phone: "PH001",
-    Car: "CR001",
-    Wall: "WL001",
+    "01": "01",
+    "02": "02",
+    "03": "03",
+    "04": "04",
+    "05": "05",
+    "06": "06",
+    "07": "07",
   };
 
   const damageCodes: Record<string, string> = {
-    Broken: "BR001",
-    Scratched: "SC001",
-    Dented: "DT001",
-    Cracked: "CR001",
-    "Water Damage": "WD001",
+    Broken: "BR",
+    Missing: "MI",
+    Bent: "BE",
+    Cracked: "CR",
+    Leak: "LK",
   };
 
   const severityCodes: Record<string, string> = {
-    Minor: "MN001",
-    Moderate: "MD001",
-    Major: "MA001",
-    Critical: "CR001",
+    "Replacement Required": "RQ",
   };
 
   const actionCodes: Record<string, string> = {
-    Repair: "RP001",
-    Replace: "RP002",
-    Clean: "CL001",
-    Inspect: "IN001",
-    "No Action Required": "NA001",
+    Repair: "RE",
+    Replace: "RP",
+    Refinish: "RF",
+    Inspect: "IN",
   };
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -150,7 +148,7 @@ export function DamageReportForm() {
   };
 
   return (
-    <div className="max-w-md mx-auto bg-white/90 backdrop-blur-sm rounded-xl shadow-xl p-8 border border-orange-100">
+    <div className="max-w-4xl mx-auto bg-white/90 backdrop-blur-sm rounded-xl shadow-xl p-8 border border-orange-100">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-center bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text text-transparent">
           Damage Report Form
@@ -173,12 +171,15 @@ export function DamageReportForm() {
       )}
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full"
+        >
           <FormField
             control={form.control}
             name="workorder_number"
             render={({ field }) => (
-              <FormItem>
+              <FormItem className="w-full">
                 <FormLabel>Workorder Number</FormLabel>
                 <FormControl>
                   <Input
@@ -202,7 +203,7 @@ export function DamageReportForm() {
             control={form.control}
             name="item"
             render={({ field }) => (
-              <FormItem>
+              <FormItem className="w-full">
                 <FormLabel>Item</FormLabel>
                 <Select
                   onValueChange={(value) => {
@@ -211,8 +212,8 @@ export function DamageReportForm() {
                   }}
                   defaultValue={field.value}
                 >
-                  <FormControl>
-                    <SelectTrigger>
+                  <FormControl className="w-full">
+                    <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select an item" />
                     </SelectTrigger>
                   </FormControl>
@@ -244,7 +245,7 @@ export function DamageReportForm() {
             control={form.control}
             name="subitem"
             render={({ field }) => (
-              <FormItem>
+              <FormItem className="w-full">
                 <FormLabel>Subitem</FormLabel>
                 <Select
                   onValueChange={(value) => {
@@ -253,20 +254,18 @@ export function DamageReportForm() {
                   }}
                   defaultValue={field.value}
                 >
-                  <FormControl>
-                    <SelectTrigger>
+                  <FormControl className="w-full">
+                    <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select a subitem" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="chair">Chair</SelectItem>
-                    <SelectItem value="table">Table</SelectItem>
-                    <SelectItem value="computer">Computer</SelectItem>
-                    <SelectItem value="phone">Phone</SelectItem>
-                    <SelectItem value="car">Car</SelectItem>
-                    <SelectItem value="wall">Wall</SelectItem>
-                    <SelectItem value="door">Door</SelectItem>
-                    <SelectItem value="tool">Tool</SelectItem>
+                    <SelectItem value="01">01</SelectItem>
+                    <SelectItem value="02">02</SelectItem>
+                    <SelectItem value="03">03</SelectItem>
+                    <SelectItem value="04">04</SelectItem>
+                    <SelectItem value="05">05</SelectItem>
+                    <SelectItem value="06">06</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -278,7 +277,7 @@ export function DamageReportForm() {
             control={form.control}
             name="damage"
             render={({ field }) => (
-              <FormItem>
+              <FormItem className="w-full">
                 <FormLabel>Damage Type</FormLabel>
                 <Select
                   onValueChange={(value) => {
@@ -287,21 +286,17 @@ export function DamageReportForm() {
                   }}
                   defaultValue={field.value}
                 >
-                  <FormControl>
-                    <SelectTrigger>
+                  <FormControl className="w-full">
+                    <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select damage type" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="broken">Broken</SelectItem>
-                    <SelectItem value="scratched">Scratched</SelectItem>
-                    <SelectItem value="dented">Dented</SelectItem>
-                    <SelectItem value="cracked">Cracked</SelectItem>
-                    <SelectItem value="water_damage">Water Damage</SelectItem>
-                    <SelectItem value="electrical_issue">
-                      Electrical Issue
-                    </SelectItem>
-                    <SelectItem value="missing_parts">Missing Parts</SelectItem>
+                    <SelectItem value="Broken">Broken</SelectItem>
+                    <SelectItem value="Missing">Missing</SelectItem>
+                    <SelectItem value="Bent">Bent</SelectItem>
+                    <SelectItem value="Cracked">Cracked</SelectItem>
+                    <SelectItem value="Leak">Leak</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -313,7 +308,7 @@ export function DamageReportForm() {
             control={form.control}
             name="severity"
             render={({ field }) => (
-              <FormItem>
+              <FormItem className="w-full">
                 <FormLabel>Severity</FormLabel>
                 <Select
                   onValueChange={(value) => {
@@ -322,16 +317,15 @@ export function DamageReportForm() {
                   }}
                   defaultValue={field.value}
                 >
-                  <FormControl>
-                    <SelectTrigger>
+                  <FormControl className="w-full">
+                    <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select severity level" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="minor">Minor</SelectItem>
-                    <SelectItem value="moderate">Moderate</SelectItem>
-                    <SelectItem value="major">Major</SelectItem>
-                    <SelectItem value="critical">Critical</SelectItem>
+                    <SelectItem value="Replacement Required">
+                      Replacement Required
+                    </SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -343,7 +337,7 @@ export function DamageReportForm() {
             control={form.control}
             name="action"
             render={({ field }) => (
-              <FormItem>
+              <FormItem className="w-full">
                 <FormLabel>Recommended Action</FormLabel>
                 <Select
                   onValueChange={(value) => {
@@ -352,19 +346,16 @@ export function DamageReportForm() {
                   }}
                   defaultValue={field.value}
                 >
-                  <FormControl>
-                    <SelectTrigger>
+                  <FormControl className="w-full">
+                    <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select recommended action" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="repair">Repair</SelectItem>
-                    <SelectItem value="replace">Replace</SelectItem>
-                    <SelectItem value="clean">Clean</SelectItem>
-                    <SelectItem value="inspect">Inspect Further</SelectItem>
-                    <SelectItem value="no_action">
-                      No Action Required
-                    </SelectItem>
+                    <SelectItem value="Repair">Repair</SelectItem>
+                    <SelectItem value="Replace">Replace</SelectItem>
+                    <SelectItem value="Refinish">Refinish</SelectItem>
+                    <SelectItem value="Inspect">Inspect</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -372,13 +363,15 @@ export function DamageReportForm() {
             )}
           />
 
-          <Button
-            type="submit"
-            className="w-full bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 transition-all duration-300"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? "Submitting..." : "Submit Report"}
-          </Button>
+          <div className="md:col-start-2 md:col-span-1">
+            <Button
+              type="submit"
+              className="w-full relative overflow-hidden bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 transition-colors duration-300 ease-in-out transform hover:scale-[1.02]"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? <Loading /> : "Submit Report"}
+            </Button>
+          </div>
         </form>
       </Form>
     </div>

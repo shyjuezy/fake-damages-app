@@ -37,7 +37,7 @@ app.get("/api/health", (req, res) => {
 app.post("/api/submit", async (req, res) => {
   try {
     const {
-      workorder_number,
+      work_order_number,
       item,
       item_code,
       subitem,
@@ -48,11 +48,12 @@ app.post("/api/submit", async (req, res) => {
       severity_code,
       action,
       action_code,
+      site_id,
     } = req.body;
 
     // Validate input
     if (
-      !workorder_number ||
+      !work_order_number ||
       !item ||
       !item_code ||
       !subitem ||
@@ -62,13 +63,14 @@ app.post("/api/submit", async (req, res) => {
       !severity ||
       !severity_code ||
       !action ||
-      !action_code
+      !action_code ||
+      !site_id
     ) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
     const damageReport = {
-      workorder_number,
+      work_order_number,
       item,
       item_code,
       subitem,
@@ -79,22 +81,24 @@ app.post("/api/submit", async (req, res) => {
       severity_code,
       action,
       action_code,
+      site_id,
     };
 
     const queryParams = {
       TableName: tableName,
-      IndexName: "workorder_number-index",
+      IndexName: "index_work_order_number",
       KeyConditionExpression:
-        "workorder_number = :workorder_number and begins_with(sk, :sk_prefix)",
+        "work_order_number = :work_order_number and begins_with(sk, :sk_prefix)",
       ExpressionAttributeValues: {
-        ":workorder_number": workorder_number,
-        ":sk_prefix": "workorder#",
+        ":work_order_number": work_order_number,
+        ":sk_prefix": "workorder:",
       },
     };
 
     // get data from dynamodb using index
     const queryResult = await dynamoDB.send(new QueryCommand(queryParams));
     const summary_record = queryResult.Items[0];
+    damageReport.sblu = summary_record.sblu;
 
     console.log(summary_record);
 
@@ -117,9 +121,8 @@ app.listen(port, () => {
 const create_damage_record = async (damage_record) => {
   try {
     record = {
-      pk: "workorder#" + damage_record.workorder_number,
-      sk:
-        "damage#" + damage_record.item_code + "#" + damage_record.subitem_code,
+      pk: `workorder:${damage_record.sblu}#${damage_record.site_id}`,
+      sk: `damage:${damage_record.item_code}#${damage_record.subitem_code}#${damage_record.damage_code}#${damage_record.severity_code}#${damage_record.action_code}`,
       item: damage_record.item,
       item_code: damage_record.item_code,
       subitem: damage_record.subitem,
@@ -130,13 +133,26 @@ const create_damage_record = async (damage_record) => {
       severity_code: damage_record.severity_code,
       action: damage_record.action,
       action_code: damage_record.action_code,
+      approved: true,
+      category: "Mechanical",
       charge_p_status: {
-        status: "pending",
+        ecrvcf_status: "PN",
+        shop_code: "MECH",
+        translated_status: "PART NEEDED",
       },
       charge_l_status: {
-        status: "pending",
+        ecrvcf_status: "M",
+        shop_code: "MECH",
+        translated_status: "READY FOR REPAIR",
       },
-      updated: new Date().toISOString(),
+      entity_type: "damage",
+      site_id: damage_record.site_id,
+      source: "ECRVCF",
+      sblu: damage_record.sblu,
+      updated: Math.floor(new Date().getTime() / 1000),
+      updated_by: "faker",
+      vin: "12345678901234567",
+      work_order_number: damage_record.work_order_number,
     };
 
     const params = {

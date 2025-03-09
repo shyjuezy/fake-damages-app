@@ -23,9 +23,8 @@ const create_damage_record = async (damage_record) => {
   debugger;
   try {
     const record = {
-      pk: "workorder#" + damage_record.workorder_number,
-      sk:
-        "damage#" + damage_record.item_code + "#" + damage_record.subitem_code,
+      pk: `workorder:${damage_record.sblu}#${damage_record.site_id}`,
+      sk: `damage:${damage_record.item_code}#${damage_record.subitem_code}#${damage_record.damage_code}#${damage_record.severity_code}#${damage_record.action_code}`,
       item: damage_record.item,
       item_code: damage_record.item_code,
       subitem: damage_record.subitem,
@@ -36,6 +35,8 @@ const create_damage_record = async (damage_record) => {
       severity_code: damage_record.severity_code,
       action: damage_record.action,
       action_code: damage_record.action_code,
+      site_id: damage_record.site_id,
+      sblu: damage_record.sblu,
       charge_p_status: {
         status: "pending",
       },
@@ -65,7 +66,7 @@ async function test_function() {
   try {
     // Create mock data
     const mockDamageReport = {
-      workorder_number: "WO12345",
+      work_order_number: "7496077",
       item: "Engine",
       item_code: "ENG001",
       subitem: "Fuel Pump",
@@ -76,6 +77,7 @@ async function test_function() {
       severity_code: "MOD",
       action: "Replace",
       action_code: "REP",
+      site_id: "PLM1",
     };
 
     console.log("Testing with mock data:", mockDamageReport);
@@ -83,12 +85,12 @@ async function test_function() {
     // Test query
     const queryParams = {
       TableName: tableName,
-      IndexName: "workorder_number-index",
+      IndexName: "index_work_order_number",
       KeyConditionExpression:
-        "workorder_number = :workorder_number and begins_with(sk, :sk_prefix)",
+        "work_order_number = :work_order_number and begins_with(sk, :sk_prefix)",
       ExpressionAttributeValues: {
-        ":workorder_number": mockDamageReport.workorder_number,
-        ":sk_prefix": "workorder#",
+        ":work_order_number": mockDamageReport.work_order_number,
+        ":sk_prefix": "workorder:",
       },
     };
 
@@ -99,6 +101,7 @@ async function test_function() {
 
     const summary_record = queryResult.Items?.[0];
     console.log("Summary record:", summary_record);
+    mockDamageReport.sblu = summary_record.sblu;
 
     // Test create damage record
     const createdRecord = await create_damage_record(mockDamageReport);
