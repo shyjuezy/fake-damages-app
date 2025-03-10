@@ -4,7 +4,8 @@ export async function POST(request: Request) {
   try {
     const data = await request.json();
 
-    const response = await fetch("http://backend:4000/api/submit", {
+    // const response = await fetch("http://backend:4000/api/submit", {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/submit`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
